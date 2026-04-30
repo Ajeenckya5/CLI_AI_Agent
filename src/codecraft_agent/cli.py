@@ -6,7 +6,14 @@ import sys
 
 from . import __version__
 from .agent import Agent
-from .config import DEFAULT_BASE_URL, DEFAULT_MODEL, load_config
+from .config import (
+    DEFAULT_API_KEY_ENV,
+    DEFAULT_BASE_URL,
+    DEFAULT_MODEL,
+    DEFAULT_PROVIDER,
+    PROVIDER_DEFAULTS,
+    load_config,
+)
 from .llm import LLMError
 from .ui import Console
 
@@ -29,16 +36,30 @@ Tips:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="codecraft",
-        description="CLI coding agent using raw OpenAI-compatible LLM API calls.",
+        description="CLI coding agent using raw xAI/OpenAI-compatible LLM API calls.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--workspace", default=os.getcwd(), help="Workspace directory. Defaults to cwd.")
-    parser.add_argument("--model", default=None, help=f"Model name. Default: env CODECRAFT_MODEL or {DEFAULT_MODEL}.")
-    parser.add_argument("--base-url", default=None, help=f"API base URL. Default: {DEFAULT_BASE_URL}.")
+    parser.add_argument(
+        "--provider",
+        choices=sorted(PROVIDER_DEFAULTS),
+        default=None,
+        help=f"Provider defaults to use. Default: env CODECRAFT_PROVIDER or {DEFAULT_PROVIDER}.",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help=f"Model name. Default for {DEFAULT_PROVIDER}: {DEFAULT_MODEL}.",
+    )
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help=f"API base URL. Default for {DEFAULT_PROVIDER}: {DEFAULT_BASE_URL}.",
+    )
     parser.add_argument(
         "--api-key-env",
-        default="OPENAI_API_KEY",
-        help="Environment variable containing the API key. Default: OPENAI_API_KEY.",
+        default=None,
+        help=f"Environment variable containing the API key. Default for {DEFAULT_PROVIDER}: {DEFAULT_API_KEY_ENV}.",
     )
     parser.add_argument("--api-key", default=None, help="API key value. Prefer an environment variable.")
     parser.add_argument("--temperature", type=float, default=0.2, help="LLM temperature.")
@@ -57,25 +78,31 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    config = load_config(
-        workspace=args.workspace,
-        model=args.model,
-        base_url=args.base_url,
-        api_key=args.api_key,
-        api_key_env=args.api_key_env,
-        temperature=args.temperature,
-        max_steps=args.max_steps,
-        command_timeout=args.command_timeout,
-        auto_approve=args.auto_approve,
-        color=not args.no_color,
-    )
+    try:
+        config = load_config(
+            workspace=args.workspace,
+            provider=args.provider,
+            model=args.model,
+            base_url=args.base_url,
+            api_key=args.api_key,
+            api_key_env=args.api_key_env,
+            temperature=args.temperature,
+            max_steps=args.max_steps,
+            command_timeout=args.command_timeout,
+            auto_approve=args.auto_approve,
+            color=not args.no_color,
+        )
+    except ValueError as exc:
+        console = Console(color=not args.no_color)
+        console.error(str(exc))
+        return 2
     console = Console(color=config.color)
 
     if not config.api_key:
         console.error(
-            "missing API key. Set OPENAI_API_KEY, CODECRAFT_API_KEY, or pass --api-key."
+            f"missing API key. Set {config.api_key_env}, CODECRAFT_API_KEY, or pass --api-key."
         )
-        console.system("Example: export OPENAI_API_KEY='sk-...' && codecraft --workspace .")
+        console.system(f"Example: export {config.api_key_env}='...' && codecraft --workspace .")
         return 2
 
     agent = Agent(config, console)
@@ -88,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
             console.error(str(exc))
             return 1
 
-    console.banner(config.model, str(config.workspace))
+    console.banner(config.provider, config.model, str(config.workspace))
     while True:
         try:
             user_text = input(console.prompt()).strip()
@@ -130,4 +157,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

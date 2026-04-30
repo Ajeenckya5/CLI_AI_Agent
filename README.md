@@ -1,7 +1,7 @@
 # CodeCraft Agent
 
 CodeCraft Agent is a professional command-line coding agent built with raw LLM
-API calls. It accepts programming requests in a terminal, sends them to an
+API calls. It accepts programming requests in a terminal, sends them to the xAI
 OpenAI-compatible chat-completions API, executes model-requested tool calls, and
 returns readable progress and results.
 
@@ -11,8 +11,8 @@ framework. The only runtime dependency is Python.
 ## Features
 
 - Interactive CLI with clear prompts, status messages, and tool feedback.
-- Raw HTTPS calls to `/v1/chat/completions` using Python standard library only.
-- OpenAI-compatible provider support through `--base-url`.
+- Raw HTTPS calls to xAI's `/v1/chat/completions` endpoint using Python standard library only.
+- xAI defaults with OpenAI-compatible provider support through `--provider`, `--base-url`, and `--model`.
 - Native function/tool calling loop.
 - Workspace-scoped local tools:
   - `list_files`
@@ -35,7 +35,7 @@ codecraft-agent/
     agent.py      # conversation loop and tool-call execution
     cli.py        # terminal interface
     config.py     # environment and CLI configuration
-    llm.py        # raw OpenAI-compatible HTTP client
+    llm.py        # raw xAI/OpenAI-compatible HTTP client
     tools.py      # local coding tools
     ui.py         # terminal formatting and prompts
   tests/
@@ -63,19 +63,35 @@ codecraft --help
 
 ## Configuration
 
-CodeCraft uses an OpenAI-compatible chat-completions API.
+CodeCraft uses xAI by default:
 
-### OpenAI
+```text
+provider: xai
+base URL: https://api.x.ai/v1
+model: grok-4.20-reasoning
+key env: XAI_API_KEY
+```
+
+### xAI
 
 ```bash
-export OPENAI_API_KEY="your-api-key"
+export XAI_API_KEY="your-xai-api-key"
 codecraft --workspace /path/to/project
 ```
 
-The default model is `gpt-4o-mini`. You can override it:
+The default xAI model is `grok-4.20-reasoning`. You can override it:
 
 ```bash
-codecraft --model gpt-4o --workspace /path/to/project
+codecraft --model grok-4 --workspace /path/to/project
+```
+
+### OpenAI
+
+OpenAI is still available through provider defaults:
+
+```bash
+export OPENAI_API_KEY="your-openai-api-key"
+codecraft --provider openai --workspace /path/to/project
 ```
 
 ### Other OpenAI-Compatible Providers
@@ -96,7 +112,9 @@ Environment variables:
 CODECRAFT_API_KEY     # fallback API key
 CODECRAFT_BASE_URL    # fallback base URL
 CODECRAFT_MODEL       # fallback model
-OPENAI_API_KEY        # default key env var
+CODECRAFT_PROVIDER    # xai or openai
+XAI_API_KEY           # default xAI key env var
+OPENAI_API_KEY        # default OpenAI key env var when --provider openai is used
 ```
 
 You can also use a different key variable:
@@ -216,4 +234,3 @@ python3 logscope.py sample.log --service api --bucket minute
 This project intentionally avoids runtime dependencies. If you want richer
 terminal rendering later, add a small UI dependency such as `rich`, but the
 current implementation is fully functional with the Python standard library.
-

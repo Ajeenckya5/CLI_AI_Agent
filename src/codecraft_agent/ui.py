@@ -43,9 +43,10 @@ class Console:
     def __init__(self, *, color: bool = True) -> None:
         self.style = Style(color)
 
-    def banner(self, model: str, workspace: str) -> None:
+    def banner(self, provider: str, model: str, workspace: str) -> None:
         title = self.style.bold(self.style.cyan("CodeCraft Agent"))
         print(f"\n{title}  {self.style.dim('raw-API coding assistant')}")
+        print(self.style.dim(f"provider: {provider}"))
         print(self.style.dim(f"model: {model}"))
         print(self.style.dim(f"workspace: {workspace}"))
         print(self.style.dim("type /help for commands, /exit to quit\n"))
@@ -109,4 +110,3 @@ class Console:
         finally:
             stop.set()
             thread.join(timeout=0.2)
-

@@ -31,7 +31,8 @@ class OpenAICompatibleClient:
     def chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> dict[str, Any]:
         if not self.api_key:
             raise LLMError(
-                "missing API key. Set OPENAI_API_KEY, CODECRAFT_API_KEY, or pass --api-key."
+                "missing API key. Set the provider API key environment variable, "
+                "CODECRAFT_API_KEY, or pass --api-key."
             )
 
         payload = {
@@ -66,4 +67,3 @@ class OpenAICompatibleClient:
             return parsed["choices"][0]["message"]
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
             raise LLMError(f"provider returned an unexpected response: {body[:1000]}") from exc
-

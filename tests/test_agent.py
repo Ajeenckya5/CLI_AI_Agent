@@ -45,9 +45,11 @@ class AgentLoopTests(unittest.TestCase):
             workspace = Path(tmp)
             config = AgentConfig(
                 workspace=workspace,
+                provider="xai",
                 model="fake-model",
                 base_url="https://example.invalid/v1",
                 api_key="test-key",
+                api_key_env="XAI_API_KEY",
                 auto_approve=True,
                 color=False,
             )
