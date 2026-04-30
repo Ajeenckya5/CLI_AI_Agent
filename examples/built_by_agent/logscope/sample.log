@@ -1,0 +1,11 @@
+{"timestamp":"2026-04-30T09:00:01Z","level":"INFO","service":"api","message":"request complete","status":200}
+{"timestamp":"2026-04-30T09:00:12Z","level":"INFO","service":"api","message":"request complete","status":200}
+{"timestamp":"2026-04-30T09:00:19Z","level":"WARN","service":"worker","message":"retrying job","status":503}
+2026-04-30T09:01:04 ERROR api - request failed status=500 route=/checkout
+2026-04-30T09:01:11 ERROR api - request failed status=500 route=/checkout
+2026-04-30T09:01:17 ERROR api - request failed status=502 route=/checkout
+2026-04-30T09:01:21 ERROR api - request failed status=500 route=/checkout
+2026-04-30T09:02:02 INFO worker - job completed id=41
+2026-04-30T09:02:45 INFO worker - job completed id=42
+{"timestamp":"2026-04-30T10:15:00Z","level":"INFO","service":"billing","message":"invoice generated","status":201}
+

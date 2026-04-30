@@ -1,0 +1,219 @@
+# CodeCraft Agent
+
+CodeCraft Agent is a professional command-line coding agent built with raw LLM
+API calls. It accepts programming requests in a terminal, sends them to an
+OpenAI-compatible chat-completions API, executes model-requested tool calls, and
+returns readable progress and results.
+
+It does not use LangChain, Strands, CrewAI, AutoGen, or any similar agentic
+framework. The only runtime dependency is Python.
+
+## Features
+
+- Interactive CLI with clear prompts, status messages, and tool feedback.
+- Raw HTTPS calls to `/v1/chat/completions` using Python standard library only.
+- OpenAI-compatible provider support through `--base-url`.
+- Native function/tool calling loop.
+- Workspace-scoped local tools:
+  - `list_files`
+  - `read_file`
+  - `search_files`
+  - `write_file`
+  - `replace_in_file`
+  - `make_directory`
+  - `run_command`
+- Approval prompts for file writes and shell commands by default.
+- `--auto-approve` mode for trusted local automation.
+- Unit tests for tool execution and the LLM/tool loop.
+- Included example project built as an agent deliverable: `examples/built_by_agent/logscope`.
+
+## Project Layout
+
+```text
+codecraft-agent/
+  src/codecraft_agent/
+    agent.py      # conversation loop and tool-call execution
+    cli.py        # terminal interface
+    config.py     # environment and CLI configuration
+    llm.py        # raw OpenAI-compatible HTTP client
+    tools.py      # local coding tools
+    ui.py         # terminal formatting and prompts
+  tests/
+  examples/built_by_agent/logscope/
+  README.md
+  pyproject.toml
+```
+
+## Installation
+
+From this folder:
+
+```bash
+cd /Users/aj/Downloads/codecraft-agent
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -e .
+```
+
+Confirm the CLI is installed:
+
+```bash
+codecraft --help
+```
+
+## Configuration
+
+CodeCraft uses an OpenAI-compatible chat-completions API.
+
+### OpenAI
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+codecraft --workspace /path/to/project
+```
+
+The default model is `gpt-4o-mini`. You can override it:
+
+```bash
+codecraft --model gpt-4o --workspace /path/to/project
+```
+
+### Other OpenAI-Compatible Providers
+
+Set a compatible base URL and model:
+
+```bash
+export CODECRAFT_API_KEY="your-provider-key"
+codecraft \
+  --base-url "https://provider.example.com/v1" \
+  --model "provider-model-name" \
+  --workspace /path/to/project
+```
+
+Environment variables:
+
+```bash
+CODECRAFT_API_KEY     # fallback API key
+CODECRAFT_BASE_URL    # fallback base URL
+CODECRAFT_MODEL       # fallback model
+OPENAI_API_KEY        # default key env var
+```
+
+You can also use a different key variable:
+
+```bash
+export MY_PROVIDER_KEY="..."
+codecraft --api-key-env MY_PROVIDER_KEY
+```
+
+## Usage
+
+Start an interactive session:
+
+```bash
+codecraft --workspace /path/to/project
+```
+
+Example prompts:
+
+```text
+Inspect this project and explain how it is structured.
+Add unit tests for the parser.
+Find why the test suite is failing and fix it.
+Build a small CLI that summarizes CSV files.
+Refactor the cache module to make eviction deterministic.
+```
+
+Run a single prompt and exit:
+
+```bash
+codecraft --workspace /path/to/project --once "Inspect the repo and suggest the next test to add"
+```
+
+Allow write and shell tools without confirmation:
+
+```bash
+codecraft --workspace /path/to/project --auto-approve
+```
+
+Interactive commands:
+
+```text
+/help    show CLI help
+/clear   clear conversation context
+/cwd     show active workspace
+/tools   list available local tools
+/exit    quit
+```
+
+## Safety Model
+
+All file paths are resolved inside the configured workspace. Attempts to read or
+write outside that directory are rejected by the tool layer.
+
+By default, these tools require confirmation:
+
+- `write_file`
+- `replace_in_file`
+- `make_directory`
+- `run_command`
+
+Use `--auto-approve` only in a workspace you trust.
+
+## How Tool Calling Works
+
+1. The user enters a programming request.
+2. CodeCraft sends the conversation and JSON tool schemas to the configured LLM.
+3. If the model returns tool calls, CodeCraft parses the function name and JSON arguments.
+4. CodeCraft executes the local tool inside the workspace.
+5. Tool results are appended to the conversation as tool messages.
+6. The loop continues until the model returns a final answer or `--max-steps` is reached.
+
+The implementation lives in:
+
+- `src/codecraft_agent/llm.py`
+- `src/codecraft_agent/agent.py`
+- `src/codecraft_agent/tools.py`
+
+## Verification
+
+Run the agent test suite:
+
+```bash
+cd /Users/aj/Downloads/codecraft-agent
+PYTHONPATH=src python3 -m unittest discover -s tests
+```
+
+Run the included example project tests:
+
+```bash
+cd /Users/aj/Downloads/codecraft-agent/examples/built_by_agent/logscope
+python3 -m unittest discover -s .
+```
+
+Try the example program:
+
+```bash
+python3 logscope.py sample.log --top 3
+```
+
+## Example Project Built by the Agent
+
+`examples/built_by_agent/logscope` contains LogScope, a non-trivial Python CLI
+for analyzing logs. It can parse JSONL and plain-text log formats, aggregate by
+level/service/status, build minute or hour timelines, detect bursts, and emit
+text or JSON reports.
+
+Example:
+
+```bash
+cd /Users/aj/Downloads/codecraft-agent/examples/built_by_agent/logscope
+python3 logscope.py sample.log --service api --bucket minute
+```
+
+## Development Notes
+
+This project intentionally avoids runtime dependencies. If you want richer
+terminal rendering later, add a small UI dependency such as `rich`, but the
+current implementation is fully functional with the Python standard library.
+
