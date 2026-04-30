@@ -36,6 +36,7 @@ class AgentConfig:
     command_timeout: int = 30
     auto_approve: bool = False
     color: bool = True
+    stream: bool = True
 
 
 def load_config(
@@ -51,6 +52,7 @@ def load_config(
     command_timeout: int = 30,
     auto_approve: bool = False,
     color: bool = True,
+    stream: bool = True,
 ) -> AgentConfig:
     resolved_workspace = Path(workspace or os.getcwd()).expanduser().resolve()
     resolved_provider = (provider or os.getenv("CODECRAFT_PROVIDER") or DEFAULT_PROVIDER).lower()
@@ -76,4 +78,5 @@ def load_config(
         command_timeout=command_timeout,
         auto_approve=auto_approve,
         color=color,
+        stream=stream,
     )

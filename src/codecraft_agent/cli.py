@@ -14,6 +14,8 @@ from .config import (
     PROVIDER_DEFAULTS,
     load_config,
 )
+from .context import build_project_context
+from .doctor import run_doctor
 from .llm import LLMError
 from .ui import Console
 
@@ -21,6 +23,8 @@ from .ui import Console
 HELP_TEXT = """Commands:
   /help        Show this help
   /clear       Clear conversation context
+  /context     Show detected project context
+  /doctor      Check provider, model, key, chat, and tool calling
   /cwd         Show active workspace
   /tools       List available local tools
   /exit        Quit
@@ -39,6 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="CLI coding agent using raw xAI/OpenAI-compatible LLM API calls.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("command", nargs="?", choices=["doctor", "context"], help="Optional utility command.")
     parser.add_argument("--workspace", default=os.getcwd(), help="Workspace directory. Defaults to cwd.")
     parser.add_argument(
         "--provider",
@@ -72,6 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Allow write and shell tools without interactive confirmation.",
     )
     parser.add_argument("--no-color", action="store_true", help="Disable ANSI colors.")
+    parser.add_argument("--no-stream", action="store_true", help="Disable streaming assistant output.")
     parser.add_argument("--once", help="Run one prompt and exit.")
     return parser
 
@@ -91,12 +97,20 @@ def main(argv: list[str] | None = None) -> int:
             command_timeout=args.command_timeout,
             auto_approve=args.auto_approve,
             color=not args.no_color,
+            stream=not args.no_stream,
         )
     except ValueError as exc:
         console = Console(color=not args.no_color)
         console.error(str(exc))
         return 2
     console = Console(color=config.color)
+
+    if args.command == "context":
+        console.system(build_project_context(config.workspace))
+        return 0
+
+    if args.command == "doctor":
+        return run_doctor(config, console)
 
     if not config.api_key:
         console.error(
@@ -109,7 +123,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.once:
         try:
-            console.assistant(agent.run(args.once))
+            answer = agent.run(args.once)
+            if not agent.last_response_streamed:
+                console.assistant(answer)
             return 0
         except LLMError as exc:
             console.error(str(exc))
@@ -135,6 +151,12 @@ def main(argv: list[str] | None = None) -> int:
                 agent.reset()
                 console.system("conversation context cleared")
                 continue
+            if user_text == "/context":
+                console.system(build_project_context(config.workspace))
+                continue
+            if user_text == "/doctor":
+                run_doctor(config, console)
+                continue
             if user_text == "/cwd":
                 console.system(str(config.workspace))
                 continue
@@ -147,7 +169,9 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         try:
-            console.assistant(agent.run(user_text))
+            answer = agent.run(user_text)
+            if not agent.last_response_streamed:
+                console.assistant(answer)
         except LLMError as exc:
             console.error(str(exc))
             return 1

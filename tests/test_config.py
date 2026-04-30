@@ -16,6 +16,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.base_url, "https://api.x.ai/v1")
         self.assertEqual(config.model, "grok-4.20-reasoning")
         self.assertEqual(config.api_key_env, "XAI_API_KEY")
+        self.assertTrue(config.stream)
 
     def test_openai_provider_defaults_are_still_available(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
@@ -36,4 +37,3 @@ class ConfigTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -61,6 +61,15 @@ class Console:
         print(text.strip())
         print()
 
+    def stream_start(self) -> None:
+        print(f"\n{self.style.bold(self.style.blue('agent'))} {self.style.dim('>')}")
+
+    def stream_delta(self, text: str) -> None:
+        print(text, end="", flush=True)
+
+    def stream_end(self) -> None:
+        print("\n")
+
     def system(self, text: str) -> None:
         print(self.style.dim(text))
 
@@ -76,6 +85,10 @@ class Console:
     def tool_done(self, ok: bool, summary: str) -> None:
         marker = self.style.green("ok") if ok else self.style.red("failed")
         print(f"{self.style.dim('       ')}{marker} {self.style.dim(summary)}")
+
+    def tool_preview(self, text: str) -> None:
+        if text.strip():
+            print(self.style.dim(text.rstrip()))
 
     def confirm(self, question: str) -> bool:
         while True:

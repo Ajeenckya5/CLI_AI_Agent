@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run agent tests
+        run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m unittest discover -s tests
+
+      - name: Run example project tests
+        working-directory: examples/built_by_agent/logscope
+        run: PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s .
+
+      - name: Compile Python sources
+        run: PYTHONDONTWRITEBYTECODE=1 python -m compileall src tests examples/built_by_agent/logscope
+

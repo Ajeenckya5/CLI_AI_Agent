@@ -39,6 +39,7 @@ class Agent:
         )
         self.tools = ToolRegistry(config.workspace, default_timeout=config.command_timeout)
         self.messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        self.last_response_streamed = False
 
     def reset(self) -> None:
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -46,16 +47,22 @@ class Agent:
     def run(self, user_text: str) -> str:
         self.messages.append({"role": "user", "content": user_text})
         final_text = ""
+        self.last_response_streamed = False
 
         for step in range(1, self.config.max_steps + 1):
-            with self.console.spinner("thinking"):
-                message = self.client.chat(self.messages, self.tools.schemas())
+            if self.config.stream:
+                message, streamed = self._stream_message()
+            else:
+                streamed = False
+                with self.console.spinner("thinking"):
+                    message = self.client.chat(self.messages, self.tools.schemas())
 
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 content = message.get("content") or ""
                 self.messages.append({"role": "assistant", "content": content})
                 final_text = content
+                self.last_response_streamed = streamed and bool(content.strip())
                 break
 
             assistant_message = {
@@ -85,6 +92,21 @@ class Agent:
 
         return final_text
 
+    def _stream_message(self) -> tuple[dict[str, Any], bool]:
+        began = False
+
+        def on_delta(text: str) -> None:
+            nonlocal began
+            if not began:
+                self.console.stream_start()
+                began = True
+            self.console.stream_delta(text)
+
+        message = self.client.chat_stream(self.messages, self.tools.schemas(), on_delta=on_delta)
+        if began:
+            self.console.stream_end()
+        return message, began
+
     def _parse_tool_call(self, call: dict[str, Any]) -> tuple[str, dict[str, Any], str]:
         function = call.get("function") or {}
         name = function.get("name") or ""
@@ -102,6 +124,9 @@ class Agent:
             summary = self.tools.summarize_args(name, arguments)
             self.console.tool_start(name, summary)
             if tool.requires_approval and not self.config.auto_approve:
+                preview = self.tools.preview(name, arguments)
+                if preview:
+                    self.console.tool_preview(preview)
                 if not self.console.confirm(f"Run {name} {summary!r}?"):
                     self.console.tool_done(False, "denied by user")
                     return "Tool call denied by user."
@@ -112,4 +137,3 @@ class Agent:
         except (ToolError, LLMError) as exc:
             self.console.tool_done(False, str(exc))
             return f"Tool error: {exc}"
-

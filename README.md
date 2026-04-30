@@ -11,16 +11,24 @@ framework. The only runtime dependency is Python.
 ## Features
 
 - Interactive CLI with clear prompts, status messages, and tool feedback.
+- Streaming assistant output by default.
 - Raw HTTPS calls to xAI's `/v1/chat/completions` endpoint using Python standard library only.
 - xAI defaults with OpenAI-compatible provider support through `--provider`, `--base-url`, and `--model`.
 - Native function/tool calling loop.
+- Diff previews before approved file writes and replacements.
+- `doctor` command for API/model/tool-call diagnostics.
+- `context` command for project detection and suggested test commands.
 - Workspace-scoped local tools:
+  - `project_context`
   - `list_files`
   - `read_file`
   - `search_files`
   - `write_file`
   - `replace_in_file`
   - `make_directory`
+  - `git_status`
+  - `git_diff`
+  - `run_tests`
   - `run_command`
 - Approval prompts for file writes and shell commands by default.
 - `--auto-approve` mode for trusted local automation.
@@ -35,6 +43,8 @@ codecraft-agent/
     agent.py      # conversation loop and tool-call execution
     cli.py        # terminal interface
     config.py     # environment and CLI configuration
+    context.py    # workspace/project inspection
+    doctor.py     # provider diagnostics
     llm.py        # raw xAI/OpenAI-compatible HTTP client
     tools.py      # local coding tools
     ui.py         # terminal formatting and prompts
@@ -132,6 +142,18 @@ Start an interactive session:
 codecraft --workspace /path/to/project
 ```
 
+Run diagnostics against xAI:
+
+```bash
+codecraft doctor
+```
+
+Inspect a workspace without using the LLM:
+
+```bash
+codecraft context --workspace /path/to/project
+```
+
 Example prompts:
 
 ```text
@@ -148,6 +170,12 @@ Run a single prompt and exit:
 codecraft --workspace /path/to/project --once "Inspect the repo and suggest the next test to add"
 ```
 
+Disable streaming output:
+
+```bash
+codecraft --no-stream --workspace /path/to/project
+```
+
 Allow write and shell tools without confirmation:
 
 ```bash
@@ -159,6 +187,8 @@ Interactive commands:
 ```text
 /help    show CLI help
 /clear   clear conversation context
+/context show detected project context
+/doctor  check provider, model, key, chat, and tool calling
 /cwd     show active workspace
 /tools   list available local tools
 /exit    quit
@@ -174,7 +204,13 @@ By default, these tools require confirmation:
 - `write_file`
 - `replace_in_file`
 - `make_directory`
+- `run_tests`
 - `run_command`
+
+For file edits, CodeCraft shows a unified diff preview before asking for
+approval. For shell commands, it labels command risk and blocks clearly
+dangerous commands such as recursive deletion of the filesystem root, `sudo`,
+filesystem formatting, and disk erase operations.
 
 Use `--auto-approve` only in a workspace you trust.
 
